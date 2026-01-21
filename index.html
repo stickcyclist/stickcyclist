@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stickfigure Cyclist</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            /* Prevent unwanted text selection/context menus on touch devices */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(to bottom, #87CEEB 0%, #f0f0f0 100%);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; 
+            width: 100vw;
+            position: relative;
+        }
+        
+        #gameContainer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            /* Maximize the container size */
+            width: 100vw; 
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px; /* Small padding around the canvas */
+        }
+
+        #gameCanvas {
+            border: 3px solid #222;
+            background: linear-gradient(to bottom, #87CEEB 0%, #f5f5f5 70%);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+            cursor: pointer;
+            
+            /* DINO GAME STYLE MAXIMIZATION: */
+            /* Use the min() function to ensure it takes the largest possible size */
+            /* while respecting the screen width, height, and the 2:1 ratio. */
+            width: min(calc(98vh * 2), 98vw);
+            height: min(calc(98vw / 2), 98vh);
+            
+            aspect-ratio: 2 / 1; /* Maintain the 2:1 aspect ratio */
+        }
+
+        /* --- UI & Screen Styles (Unchanged for core UI) --- */
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #222;
+            font-weight: bold;
+            font-size: 20px;
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+        }
+        @media (max-width: 600px) {
+            #ui {
+                top: 0;
+                font-size: 14px;
+                gap: 5px;
+            }
+            .stat {
+                padding: 5px 10px;
+            }
+            .stat-value {
+                font-size: 18px;
+            }
+        }
+        .stat {
+            background: rgba(255,255,255,0.9);
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        .stat-value {
+            font-size: 24px;
+            color: #222;
+        }
+        #startScreen, #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(255,255,255,0.95);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+            z-index: 20;
+            max-width: 90%;
+            cursor: pointer; 
+        }
+        #startScreen h1, #gameOver h1 {
+            font-size: clamp(30px, 8vw, 56px);
+            margin-bottom: 20px;
+            color: #222;
+            text-shadow: 3px 3px 0 #4285F4;
+        }
+        #startScreen p, #gameOver p {
+            font-size: clamp(14px, 4vw, 18px);
+            color: #666;
+            margin: 10px 0;
+        }
+        .controls {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: clamp(14px, 4vw, 16px);
+            text-align: left;
+            display: inline-block;
+        }
+        .controls div {
+            margin: 5px 0;
+        }
+        .blink {
+            animation: blink 1s infinite;
+            color: #DB4437;
+            font-weight: bold;
+            font-size: clamp(18px, 6vw, 22px);
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        #gameOver {
+            display: none;
+        }
+        .medal {
+            font-size: 48px;
+            margin: 10px 0;
+        }
+        .gun-status {
+            color: #DB4437;
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        /* --- MOBILE CONTROLS STYLES --- */
+        #mobileControls {
+            position: fixed; /* Fixed position over the canvas */
+            bottom: 2vh;
+            width: 100vw;
+            max-width: 1000px; /* Limits controls width to game width */
+            z-index: 30;
+            padding: 0 20px;
+            pointer-events: none; /* Allows clicks to pass through empty space */
+            display: none; /* Hidden by default, shown when game starts */
+        }
+        .control-group {
+            position: absolute;
+            pointer-events: all; /* Re-enable pointer events for buttons */
+        }
+        #leftControls {
+            left: 20px;
+            bottom: 0;
+            display: flex;
+            gap: 10px;
+        }
+        #rightControls {
+            right: 20px;
+            bottom: 0;
+            display: flex;
+            gap: 10px;
+        }
+        .mobile-button {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: 3px solid white;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.1s;
+            touch-action: manipulation; /* Prevents double-tap zoom */
+        }
+        .mobile-button:active {
+            background: rgba(0, 0, 0, 0.8);
+            border-color: #F4B400;
+        }
+        #jumpButton {
+            background: rgba(66, 133, 244, 0.7); /* Google Blue */
+        }
+        #jumpButton:active {
+            background: rgba(66, 133, 244, 1.0);
+        }
+        #shootButton {
+            background: rgba(219, 68, 55, 0.7); /* Google Red */
+        }
+        #shootButton:active {
+            background: rgba(219, 68, 55, 1.0);
+        }
+        #duckButton {
+            background: rgba(15, 157, 88, 0.7); /* Google Green */
+        }
+        #duckButton:active {
+            background: rgba(15, 157, 88, 1.0);
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div class="stat">
+            <div class="stat-label">DISTANCE</div>
+            <div class="stat-value" id="distance">0m</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">COINS</div>
+            <div class="stat-value" id="coinCount">0</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">BEST</div>
+            <div class="stat-value" id="bestDistanceUI">0m</div>
+        </div>
+    </div>
+    <div id="gunUI" class="stat gun-status">
+        <div class="stat-label">GUN</div>
+        <div class="stat-value" id="bulletCountUI"></div>
+    </div>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1000" height="500"></canvas>
+    </div>
+    
+    <div id="startScreen">
+        <h1>🚴 CYCLIST</h1>
+        <p>A faster start! Challenge begins after 3000m!</p>
+        <div class="controls">
+            <h3>🖥️ COMPUTER CONTROLS</h3>
+            <div><strong>SPACE / CLICK</strong> = Jump / Double Jump (Hold for Higher)</div>
+            <div><strong>DOWN ARROW / S</strong> = Duck</div>
+            <div style="margin-top: 10px; color: #DB4437;">
+                <strong>LEFT ARROW / A</strong> = Shoot (if gun active)
+            </div>
+            <hr style="margin: 10px 0;">
+            <h3>📱 MOBILE CONTROLS</h3>
+            <div>**RIGHT BUTTON** (Tap/Hold) = Jump / Double Jump</div>
+            <div>**LEFT UP BUTTON** = Shoot (if gun active)</div>
+            <div>**LEFT DOWN BUTTON** = Duck (Hold)</div>
+            <div style="margin-top: 5px; color: #F4B400;">
+                Collect <strong>3 Coins</strong> for 3 Bullets!
+            </div>
+        </div>
+        <p class="blink">▶ CLICK/TAP TO START ◀</p>
+    </div>
+    
+    <div id="gameOver">
+        <h1>GAME OVER</h1>
+        <div class="medal" id="medal"></div>
+        <p style="font-size: 24px; color: #222; margin: 15px 0;">
+            Distance: <strong id="finalDistance">0m</strong>
+        </p>
+        <p id="newRecord" style="color: #4285F4; font-weight: bold; font-size: 20px; display: none;">
+            🏆 NEW RECORD! 🏆
+        </p>
+        <p class="blink">CLICK/TAP TO RESTART</p>
+    </div>
+
+    <div id="mobileControls">
+        <div id="leftControls" class="control-group">
+            <div class="mobile-button" id="shootButton">
+                🔫
+            </div>
+            <div class="mobile-button" id="duckButton">
+                ⬇️
+            </div>
+        </div>
+        
+        <div id="rightControls" class="control-group">
+            <div class="mobile-button" id="jumpButton">
+                ⬆️
+            </div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOver');
+        const mobileControls = document.getElementById('mobileControls');
+        
+        // --- CONSTANTS ---
+        const GOOGLE_BLUE = '#4285F4';
+        const GOOGLE_RED = '#DB4437';
+        const GOOGLE_YELLOW = '#F4B400';
+        const GOOGLE_GREEN = '#0F9D58';
+        const GOOGLE_PURPLE = '#673AB7'; 
+        const COIN_COLOR = GOOGLE_YELLOW;
+        const BULLET_COLOR = '#444';
+
+        // Physics Tweaks for Smoother Feel
+        const SMOOTH_GRAVITY = 0.65; 
+        const MAX_CHARGE_TIME = 25; 
+        const JUMP_POWER_NORMAL = -13;
+        const JUMP_POWER_MAX = -17; 
+
+        // Game Rules
+        const DOUBLE_JUMP_START_DISTANCE = 400;
+        const ROLLING_OBSTACLE_START_DISTANCE = 500;
+        
+        // Speed Definitions
+        const SLOW_START_SPEED = 7.0; 
+        const CHALLENGE_SPEED = 8.5; 
+        const EASY_SPEED_INCREASE_RATE = 400; 
+        const CHALLENGE_SPEED_INCREASE_RATE = 150; 
+        const CHALLENGE_START_DISTANCE = 3000; 
+
+        // Obstacle Spawning
+        const OBSTACLE_CHANCE_WEIGHT = 0.85; 
+        const COIN_CHANCE_WEIGHT = 0.15; 
+        const BASE_MIN_GAP_FRAMES = 70; 
+        const BASE_MAX_GAP_FRAMES = 100; 
+        const GAP_REDUCTION_FACTOR = 5; 
+        
+        // Monetization
+        const COINS_FOR_GUN = 3; 
+        const STARTING_BULLETS = 3;
+
+        // --- AUDIO ---
+        const jumpSound = new Audio('https://opengameart.org/sites/default/files/Sproing_0.ogg'); 
+        jumpSound.volume = 0.5; 
+        
+        const gameOverSound = new Audio('https://opengameart.org/sites/default/files/mixkit-arcade-retro-game-over-213.wav');
+        gameOverSound.volume = 0.7;
+
+        const cyclingSound = new Audio('https://opengameart.org/sites/default/files/soft_whoosh.wav');
+        cyclingSound.volume = 0.15;
+        cyclingSound.loop = true; 
+
+        const coinSound = new Audio('https://opengameart.org/sites/default/files/5.wav');
+        coinSound.volume = 0.2;
+        const shootSound = new Audio('https://opengameart.org/sites/default/files/laser2.ogg');
+        shootSound.volume = 0.4;
+
+        // --- GAME STATE ---
+        let gameState = {
+            started: false,
+            playing: false,
+            distance: 0,
+            bestDistance: parseInt(localStorage.getItem('bestDistance')) || 0,
+            gameSpeed: SLOW_START_SPEED, 
+            baseSpeed: SLOW_START_SPEED, 
+            gravity: SMOOTH_GRAVITY, 
+            obstacles: [],
+            coins: [], 
+            bullets: [], 
+            particles: [],
+            groundY: 400,
+            speedMode: 'easy',
+            speedFrameCounter: 0,
+            cyclingSoundPlaying: false,
+        };
+        
+        document.getElementById('bestDistanceUI').textContent = gameState.bestDistance + 'm';
+
+        let player = {
+            x: 120,
+            y: gameState.groundY - 30,
+            yOffset: 0,
+            vy: 0,
+            jumpPower: JUMP_POWER_NORMAL,
+            maxJumpPower: JUMP_POWER_MAX,
+            width: 40,
+            height: 30,
+            rotation: 0,
+            isJumping: false,
+            isDucking: false,
+            isCharging: false,
+            chargeTime: 0,
+            onGround: true,
+            jumpQueued: false,
+            jumpsRemaining: 2,
+            coinCount: 0,
+            gunEnabled: false,
+            bulletCount: 0,
+            previousOnGround: true, 
+        };
+        
+        let keys = {};
+        let frameCount = 0;
+        let nextSpawnTime = 0;
+
+        // --- MOBILE INPUT STATES ---
+        // New state variables for mobile buttons
+        let mobileJumpActive = false;
+        let mobileDuckActive = false;
+        let mobileShootTrigger = false;
+        
+        // --- CLASSES (Coin, Bullet, Obstacle) ---
+        // (Classes remain the same)
+        class Coin {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 15;
+                this.height = 15;
+                this.collected = false;
+            }
+            update() { this.x -= gameState.gameSpeed; }
+            draw() {
+                const drawX = Math.round(this.x);
+                const drawY = Math.round(this.y);
+
+                ctx.fillStyle = COIN_COLOR;
+                ctx.strokeStyle = GOOGLE_RED;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(drawX + this.width / 2, drawY + this.height / 2, this.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#111';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('C', drawX + this.width / 2, drawY + this.height * 0.7);
+            }
+            checkCollision() {
+                const effectivePlayerY = player.y + player.yOffset;
+                return (player.x + 15 > this.x && player.x - 15 < this.x + this.width &&
+                        effectivePlayerY + 5 > this.y && effectivePlayerY - 30 < this.y + this.height);
+            }
+            isOffScreen() { return this.x + this.width < 0; }
+        }
+        
+        class Bullet {
+            constructor() {
+                this.x = player.x + 10; 
+                this.y = player.y + player.yOffset - 25; 
+                this.width = 12;
+                this.height = 4;
+                this.vX = 25; 
+                this.hit = false;
+            }
+            update() { this.x += this.vX; }
+            draw() { 
+                const drawX = Math.round(this.x);
+                const drawY = Math.round(this.y);
+                ctx.fillStyle = BULLET_COLOR; 
+                ctx.fillRect(drawX, drawY, this.width, this.height); 
+            }
+            isOffScreen() { return this.x > canvas.width; }
+        }
+        
+        class Obstacle {
+            constructor(type, x = canvas.width + 50) {
+                this.x = x;
+                this.type = type;
+                this.vX = 0;
+                
+                if (type === 'low') {
+                    this.width = 22 + Math.random() * 10; 
+                    const heightVariation = Math.random();
+                    if (heightVariation < 0.3) {
+                        this.height = 30 + Math.random() * 25; 
+                    } else if (heightVariation < 0.7) {
+                        this.height = 55 + Math.random() * 30; 
+                    } else {
+                        this.height = 85 + Math.random() * 40; 
+                    }
+                    this.y = gameState.groundY - this.height;
+                    this.color = GOOGLE_RED; 
+                } else if (type === 'moving') {
+                    this.width = 28 + Math.random() * 12;
+                    this.height = 40 + Math.random() * 20;
+                    this.baseY = gameState.groundY - 80 - Math.random() * 50; 
+                    this.y = this.baseY;
+                    this.amplitude = 25 + Math.random() * 35;
+                    this.speed = 0.035 + Math.random() * 0.025;
+                    this.phaseOffset = Math.random() * Math.PI * 2; 
+                    this.color = GOOGLE_BLUE; 
+                } else if (type === 'doubleJumpAnchor') {
+                    this.width = 32; 
+                    this.height = 22; 
+                    this.y = gameState.groundY - this.height;
+                    this.color = GOOGLE_GREEN; 
+                } else if (type === 'doubleJumpPillar') {
+                    this.width = 22; 
+                    this.height = 140 + Math.random() * 40; 
+                    this.y = gameState.groundY - this.height;
+                    this.color = GOOGLE_PURPLE; 
+                } else if (type === 'rolling') {
+                    this.width = 35;
+                    this.height = 35;
+                    this.y = gameState.groundY - this.height;
+                    this.color = GOOGLE_YELLOW; 
+                    this.vX = (Math.random() > 0.5 ? -1 : 1) * (0.8 + Math.random() * 1.5); 
+                    this.rotation = 0;
+                }
+            }
+
+            update() {
+                if (this.type === 'rolling') {
+                    this.x -= (gameState.gameSpeed + this.vX); 
+                } else {
+                    this.x -= gameState.gameSpeed;
+                }
+
+                if (this.type === 'moving') {
+                    this.y = this.baseY + Math.sin(frameCount * this.speed + this.phaseOffset) * this.amplitude;
+                } else if (this.type === 'rolling') {
+                    this.rotation += (gameState.gameSpeed + this.vX) * 0.035; 
+                }
+            }
+            
+            draw() {
+                ctx.strokeStyle = '#111';
+                ctx.lineWidth = 2;
+                
+                if (this.type === 'rolling') {
+                    const centerX = Math.round(this.x) + this.width / 2; 
+                    const centerY = Math.round(this.y) + this.height / 2; 
+                    const radius = this.width / 2;
+
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(this.rotation);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-radius, 0); ctx.lineTo(radius, 0);
+                    ctx.moveTo(0, -radius); ctx.lineTo(0, radius);
+                    ctx.stroke();
+                    ctx.restore();
+                } else {
+                    const drawX = Math.round(this.x);
+                    const drawY = Math.round(this.y);
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(drawX, drawY, this.width, this.height);
+                    ctx.strokeRect(drawX, drawY, this.width, this.height);
+                }
+            }
+            isOffScreen() { return this.x + this.width < 0; }
+
+            checkCollision() {
+                const effectivePlayerY = player.y + player.yOffset;
+                let playerTop, playerBottom;
+
+                if (player.isDucking) {
+                    playerTop = effectivePlayerY - 5; 
+                    playerBottom = effectivePlayerY + 5;
+                } else {
+                    playerTop = effectivePlayerY - 30;
+                    playerBottom = effectivePlayerY + 5;
+                }
+                
+                const playerLeft = player.x - 15;
+                const playerRight = player.x + 15;
+                const obsLeft = this.x;
+                const obsRight = this.x + this.width;
+                const obsTop = this.y;
+                const obsBottom = this.y + this.height;
+
+                return (playerRight > obsLeft && playerLeft < obsRight &&
+                        playerBottom > obsTop && playerTop < obsBottom);
+            }
+            
+            checkBulletCollision(bullet) {
+                const obsLeft = this.x;
+                const obsRight = this.x + this.width;
+                const obsTop = this.y;
+                const obsBottom = this.y + this.height;
+                return (bullet.x + bullet.width > obsLeft && bullet.x < obsRight &&
+                        bullet.y + bullet.height > obsTop && bullet.y < obsBottom);
+            }
+        }
+
+        // --- CORE GAME LOOP FUNCTIONS ---
+
+        function spawnObstacleOrCoin() {
+            if (frameCount < nextSpawnTime) return;
+
+            let initialX = canvas.width + 50; 
+            const speedFactor = gameState.gameSpeed / SLOW_START_SPEED; 
+            const minGap = Math.max(50, BASE_MIN_GAP_FRAMES - (speedFactor * GAP_REDUCTION_FACTOR)); 
+            const maxGap = Math.max(80, BASE_MAX_GAP_FRAMES - (speedFactor * GAP_REDUCTION_FACTOR)); 
+            const spawnRand = Math.random();
+            let spawned = false;
+            
+            if (spawnRand < OBSTACLE_CHANCE_WEIGHT) { 
+                const typeRand = Math.random();
+                let type;
+                if (gameState.distance > DOUBLE_JUMP_START_DISTANCE && typeRand < 0.1) {
+                    type = 'doubleJumpPillarCombo';
+                } else if (gameState.distance > ROLLING_OBSTACLE_START_DISTANCE && typeRand < 0.25) { 
+                     type = 'rolling';
+                } else if (typeRand < 0.65) {
+                    type = 'low'; 
+                } else {
+                    type = 'moving';
+                }
+                
+                if (type === 'doubleJumpPillarCombo') {
+                    const firstObs = new Obstacle('doubleJumpAnchor', initialX);
+                    gameState.obstacles.push(firstObs);
+                    const PILLAR_GAP = 110; 
+                    const secondObs = new Obstacle('doubleJumpPillar', firstObs.x + firstObs.width + PILLAR_GAP); 
+                    gameState.obstacles.push(secondObs);
+                    nextSpawnTime = frameCount + BASE_MAX_GAP_FRAMES * 3.5; 
+                } else {
+                    gameState.obstacles.push(new Obstacle(type, initialX));
+                    nextSpawnTime = frameCount + minGap + Math.random() * (maxGap - minGap);
+                }
+                spawned = true;
+            } 
+            else if (spawnRand < OBSTACLE_CHANCE_WEIGHT + COIN_CHANCE_WEIGHT) { 
+                const coinY = gameState.groundY - 50 - Math.random() * 100;
+                gameState.coins.push(new Coin(initialX, coinY));
+                nextSpawnTime = frameCount + minGap * 0.8 + Math.random() * (maxGap - minGap) * 0.5;
+                spawned = true;
+            }
+
+            if (!spawned) {
+                nextSpawnTime = frameCount + 5; 
+            }
+        }
+
+        function shoot() {
+            if (!player.gunEnabled || player.bulletCount <= 0) return;
+            player.bulletCount--;
+            gameState.bullets.push(new Bullet());
+            shootSound.currentTime = 0;
+            shootSound.play().catch(e => {});
+
+            if (player.bulletCount === 0) {
+                player.gunEnabled = false;
+                document.getElementById('gunUI').style.display = 'none';
+            }
+        }
+
+        function handleShootInput() {
+            if (gameState.playing) {
+                shoot();
+            }
+        }
+        
+        function handleJumpInput() {
+            if (!gameState.playing) return; 
+
+            if (player.onGround && !player.isDucking) {
+                player.isCharging = true;
+                player.jumpQueued = false;
+            } else if (!player.onGround && player.jumpsRemaining > 0 && !player.isDucking) {
+                player.vy = player.jumpPower;
+                player.isJumping = true;
+                player.onGround = false;
+                player.jumpsRemaining--; 
+                player.isCharging = false;
+                player.chargeTime = 0;
+                createParticles(player.x, player.y - 20, GOOGLE_YELLOW, 8); 
+                jumpSound.currentTime = 0; 
+                jumpSound.play().catch(e => {});
+            } else if (player.isJumping && !player.isDucking) {
+                player.jumpQueued = true;
+            }
+        }
+
+        function releaseJump() {
+            if (player.isCharging && player.onGround) {
+                const chargeRatio = Math.min(player.chargeTime, MAX_CHARGE_TIME) / MAX_CHARGE_TIME;
+                const jumpStrength = player.jumpPower + chargeRatio * (player.maxJumpPower - player.jumpPower); 
+                
+                player.vy = jumpStrength;
+                player.isJumping = true;
+                player.onGround = false;
+                player.isCharging = false;
+                player.chargeTime = 0;
+                player.jumpQueued = false;
+                player.jumpsRemaining--; 
+                createParticles(player.x, player.y + 5, GOOGLE_BLUE, 5); 
+                jumpSound.currentTime = 0; 
+                jumpSound.play().catch(e => {});
+            }
+            if (!player.isJumping) {
+                player.isCharging = false;
+                player.chargeTime = 0;
+            }
+        }
+
+        function updatePlayer() {
+            if (!gameState.playing) return;
+
+            player.previousOnGround = player.onGround;
+
+            if (player.isCharging) {
+                player.chargeTime++;
+            }
+
+            // COMBINED INPUT LOGIC: Keyboard keys take precedence, but include mobile button states
+            const isInputDucking = keys['ArrowDown'] || keys['s'] || mobileDuckActive;
+            const isInputShoot = keys['ArrowLeft'] || keys['a'] || mobileShootTrigger;
+
+            if (isInputDucking && player.onGround) {
+                player.isDucking = true;
+                player.yOffset = 25;
+            } else {
+                player.isDucking = isInputDucking && !player.onGround;
+                
+                if (!isInputDucking || player.onGround) {
+                    player.yOffset = 0; 
+                }
+            }
+
+            player.vy += gameState.gravity;
+            player.y += player.vy;
+
+            let groundLevel = gameState.groundY - 30;
+            let landedOnAnchor = false;
+
+            if (player.vy >= 0) { 
+                gameState.obstacles.forEach(obs => {
+                    if ((obs.type === 'low' || obs.type === 'doubleJumpAnchor') &&
+                        player.x + 15 > obs.x && player.x - 15 < obs.x + obs.width &&
+                        player.y + 5 >= obs.y && player.y + 5 < obs.y + obs.height) 
+                    {
+                        if (player.y + 5 <= obs.y + obs.height) {
+                            groundLevel = Math.min(groundLevel, obs.y - 30); 
+                            if (obs.type === 'doubleJumpAnchor') {
+                                landedOnAnchor = true;
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (player.y >= groundLevel) {
+                const landingSpeed = Math.abs(player.vy);
+                player.y = groundLevel;
+                player.vy = 0;
+                player.isJumping = false;
+                player.onGround = true;
+                
+                if (player.y === gameState.groundY - 30 || landedOnAnchor) {
+                    player.jumpsRemaining = 2; 
+                } 
+                
+                if (player.jumpQueued) {
+                    player.vy = player.jumpPower; 
+                    player.isJumping = true;
+                    player.onGround = false;
+                    player.jumpQueued = false;
+                    player.jumpsRemaining--; 
+                }
+
+                if (landingSpeed > 1) {
+                    createParticles(player.x, player.y + 5, GOOGLE_GREEN, Math.floor(landingSpeed)); 
+                }
+            } else {
+                player.onGround = false;
+            }
+
+            // --- AUDIO LOGIC: Cycling Sound ---
+            if (player.onGround && !gameState.cyclingSoundPlaying) {
+                 cyclingSound.play().catch(e => {});
+                 gameState.cyclingSoundPlaying = true;
+            } else if (!player.onGround && gameState.cyclingSoundPlaying) {
+                cyclingSound.pause();
+                gameState.cyclingSoundPlaying = false;
+            }
+            // --- END AUDIO LOGIC ---
+
+            if (!player.onGround) {
+                if (player.isDucking) {
+                    player.rotation = Math.PI / 3;
+                } else {
+                    player.rotation = Math.min(Math.PI / 6, player.vy * 0.03);
+                }
+            } else {
+                player.rotation = player.isDucking ? 0 : 0;
+            }
+            
+            // SHOOT INPUT LOGIC: Now checks the combined input state
+            if (isInputShoot && gameState.playing) {
+                 handleShootInput();
+                 // Reset keyboard shoot keys immediately to prevent auto-fire
+                 keys['ArrowLeft'] = false; 
+                 keys['a'] = false;
+                 // Reset mobile shoot trigger immediately
+                 mobileShootTrigger = false;
+            }
+            
+            gameState.coins = gameState.coins.filter(coin => {
+                if (coin.checkCollision()) {
+                    player.coinCount++;
+                    coinSound.currentTime = 0;
+                    coinSound.play().catch(e => {});
+                    
+                    if (player.coinCount % COINS_FOR_GUN === 0) { 
+                        player.gunEnabled = true;
+                        player.bulletCount = STARTING_BULLETS;
+                        document.getElementById('gunUI').style.display = 'block';
+                    }
+                    return false;
+                }
+                return true;
+            });
+            
+            document.getElementById('coinCount').textContent = player.coinCount;
+            document.getElementById('bulletCountUI').textContent = player.bulletCount + ' / ' + STARTING_BULLETS;
+            
+            // JUMP INPUT LOGIC: Check for mobile jump active state
+            if (mobileJumpActive) {
+                // If jump button is held, trigger jump input handling every frame
+                // This handles charge, double jump, and jump queueing
+                handleJumpInput(); 
+            } else {
+                // If jump button is released, trigger release logic
+                releaseJump();
+            }
+        }
+
+        function updateGame() {
+            if (!gameState.playing) return;
+
+            frameCount++; 
+            gameState.speedFrameCounter++; 
+            gameState.distance = Math.floor((frameCount * gameState.gameSpeed) / 10);
+
+            if (gameState.distance >= CHALLENGE_START_DISTANCE && gameState.speedMode === 'easy') {
+                gameState.speedMode = 'challenge';
+                gameState.baseSpeed = CHALLENGE_SPEED;
+                gameState.speedFrameCounter = 0; 
+            }
+            
+            const increaseRate = gameState.speedMode === 'easy' ? EASY_SPEED_INCREASE_RATE : CHALLENGE_SPEED_INCREASE_RATE;
+            gameState.gameSpeed = gameState.baseSpeed + gameState.speedFrameCounter / increaseRate;
+
+            
+            spawnObstacleOrCoin();
+
+            // 1. Update and check obstacle collisions
+            gameState.obstacles.forEach(obs => {
+                obs.update();
+                if (obs.checkCollision()) {
+                    gameOver();
+                }
+            });
+            
+            // 2. Update and check bullet collisions
+            let newObstacles = [];
+            let newBullets = [];
+            
+            gameState.bullets.forEach(bullet => {
+                bullet.update();
+                let hitObstacle = false;
+                
+                gameState.obstacles.forEach(obs => {
+                    if (!hitObstacle && obs.checkBulletCollision(bullet)) {
+                        createParticles(obs.x + obs.width/2, obs.y + obs.height/2, GOOGLE_RED, 15);
+                        hitObstacle = true;
+                        bullet.hit = true;
+                    }
+                });
+                
+                if (bullet.hit || bullet.isOffScreen()) {
+                } else {
+                    newBullets.push(bullet);
+                }
+            });
+            
+            gameState.obstacles.forEach(obs => {
+                let wasHit = gameState.bullets.some(bullet => bullet.hit && obs.checkBulletCollision(obs));
+                if (!wasHit && !obs.isOffScreen()) {
+                    newObstacles.push(obs);
+                }
+            });
+            
+            gameState.obstacles = newObstacles;
+            gameState.bullets = newBullets;
+            gameState.coins.forEach(coin => coin.update());
+            gameState.coins = gameState.coins.filter(coin => !coin.isOffScreen());
+
+            gameState.particles = gameState.particles.filter(p => {
+                p.x += p.vx - gameState.gameSpeed; 
+                p.y += p.vy;
+                p.vy += gameState.gravity * 0.7; 
+                p.life -= 0.02;
+                return p.life > 0;
+            });
+        }
+
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(Math.round(player.x), Math.round(player.y + player.yOffset)); 
+            ctx.rotate(player.rotation);
+
+            const scale = player.isDucking ? 0.7 : 1;
+            ctx.scale(1, scale);
+
+            if (player.isCharging) {
+                ctx.strokeStyle = GOOGLE_RED; 
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, 30 + (player.chargeTime / MAX_CHARGE_TIME) * 15, 0, Math.PI * 2); 
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2.5;
+            
+            const wheelRotation = frameCount * gameState.gameSpeed * 0.08; 
+            
+            // Back Wheel
+            ctx.beginPath();
+            ctx.arc(-15, 0, 10, 0, Math.PI * 2);
+            ctx.stroke();
+            for (let i = 0; i < 6; i++) {
+                const angle = wheelRotation + (Math.PI / 3) * i;
+                ctx.beginPath();
+                ctx.moveTo(-15, 0);
+                ctx.lineTo(-15 + Math.cos(angle) * 8, Math.sin(angle) * 8);
+                ctx.stroke();
+            }
+
+            // Front Wheel
+            ctx.beginPath();
+            ctx.arc(15, 0, 10, 0, Math.PI * 2);
+            ctx.stroke();
+            for (let i = 0; i < 6; i++) {
+                const angle = wheelRotation + (Math.PI / 3) * i;
+                ctx.beginPath();
+                ctx.moveTo(15, 0);
+                ctx.lineTo(15 + Math.cos(angle) * 8, Math.sin(angle) * 8);
+                ctx.stroke();
+            }
+
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-15, 0); 
+            ctx.lineTo(0, -15); 
+            ctx.lineTo(15, 0); 
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, -15); 
+            ctx.lineTo(-5, -15); 
+            ctx.moveTo(15, 0);
+            ctx.lineTo(15, -15); 
+            ctx.lineTo(0, -15); 
+            ctx.stroke();
+
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(0, -15); 
+            ctx.lineTo(0, -28); 
+            ctx.stroke();
+
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(0, -32, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            const animationAmplitude = player.onGround ? 0.2 : 0;
+            const armAngle = player.onGround ? Math.sin(frameCount * gameState.gameSpeed * 0.01) * animationAmplitude : 0;
+            ctx.beginPath();
+            ctx.moveTo(0, -22);
+            ctx.lineTo(-8 + Math.cos(armAngle) * 3, -18);
+            ctx.moveTo(0, -22);
+            ctx.lineTo(8 + Math.cos(armAngle) * 3, -18);
+            ctx.stroke();
+
+            const legAngle = player.onGround ? Math.sin(frameCount * gameState.gameSpeed * 0.02) * animationAmplitude * 3 : 0;
+            ctx.beginPath();
+            ctx.moveTo(0, -15); 
+            ctx.lineTo(-5 + Math.cos(legAngle) * 8, -6 + Math.sin(legAngle) * 8); 
+            ctx.moveTo(0, -15); 
+            ctx.lineTo(5 + Math.cos(legAngle + Math.PI) * 8, -6 + Math.sin(legAngle + Math.PI) * 8); 
+            ctx.stroke();
+            
+            if (player.gunEnabled) {
+                ctx.fillStyle = BULLET_COLOR;
+                ctx.fillRect(8, -25, 10, 5); 
+                ctx.fillRect(18, -27, 8, 3); 
+            }
+
+            ctx.restore();
+        }
+        
+        function drawGround() {
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, gameState.groundY);
+            ctx.lineTo(canvas.width, gameState.groundY);
+            ctx.stroke();
+            
+            ctx.fillStyle = GOOGLE_GREEN; 
+            for (let i = 0; i < canvas.width; i += 30) {
+                const offset = (frameCount * gameState.gameSpeed * 0.5) % 30;
+                ctx.fillRect(Math.round(i - offset), gameState.groundY + 2, 15, 3);
+            }
+        }
+
+        function drawClouds() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            const cloudOffset = (frameCount * gameState.gameSpeed * 0.2) % (canvas.width + 300);
+            
+            for (let i = 0; i < 5; i++) {
+                const x = Math.round(i * 280 - cloudOffset); 
+                const y = 50 + i * 25;
+                ctx.beginPath();
+                ctx.arc(x, y, 25, 0, Math.PI * 2);
+                ctx.arc(x + 20, y, 30, 0, Math.PI * 2);
+                ctx.arc(x + 45, y, 25, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawClouds();
+            drawGround();
+
+            gameState.coins.forEach(coin => coin.draw());
+            gameState.obstacles.forEach(obs => obs.draw());
+            gameState.bullets.forEach(bullet => bullet.draw());
+
+            gameState.particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(Math.round(p.x), Math.round(p.y), p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            if (gameState.playing || gameState.started) {
+                drawPlayer();
+            }
+            
+            document.getElementById('distance').textContent = gameState.distance + 'm';
+            document.getElementById('bestDistanceUI').textContent = gameState.bestDistance + 'm';
+        }
+        
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                gameState.particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: -Math.random() * 4,
+                    life: 1,
+                    size: 1.5 + Math.random() * 2.5,
+                    color: color || '#666'
+                });
+            }
+        }
+
+        // --- GAME FLOW ---
+
+        function gameOver() {
+            gameState.playing = false;
+            createParticles(player.x, player.y, GOOGLE_RED, 20); 
+            
+            // Stop cycling sound and play game over sound
+            cyclingSound.pause();
+            cyclingSound.currentTime = 0;
+            gameState.cyclingSoundPlaying = false;
+            
+            gameOverSound.currentTime = 0;
+            gameOverSound.play().catch(e => {});
+            
+            const newRecord = gameState.distance > gameState.bestDistance;
+            if (newRecord) {
+                gameState.bestDistance = gameState.distance;
+                localStorage.setItem('bestDistance', gameState.bestDistance);
+                document.getElementById('newRecord').style.display = 'block';
+            } else {
+                document.getElementById('newRecord').style.display = 'none';
+            }
+            
+            let medal = '';
+            if (gameState.distance >= 10000) medal = '💎'; 
+            else if (gameState.distance >= 5000) medal = '🥇'; 
+            else if (gameState.distance >= 2500) medal = '🥈'; 
+            else if (gameState.distance >= 1000) medal = '🥉'; 
+            
+            document.getElementById('medal').textContent = medal;
+            document.getElementById('finalDistance').textContent = gameState.distance + 'm';
+            gameOverScreen.style.display = 'block';
+            mobileControls.style.display = 'none'; // Hide controls on game over
+        }
+
+        function startGame() {
+            // Check if already playing to prevent double starts on accidental clicks
+            if (gameState.playing) return; 
+
+            gameState.started = true;
+            gameState.playing = true;
+            gameState.distance = 0;
+            gameState.gameSpeed = SLOW_START_SPEED; 
+            gameState.baseSpeed = SLOW_START_SPEED; 
+            gameState.speedMode = 'easy'; 
+            gameState.gravity = SMOOTH_GRAVITY;
+            gameState.obstacles = [];
+            gameState.coins = [];
+            gameState.bullets = [];
+
+            player.y = gameState.groundY - 30;
+            player.yOffset = 0;
+            player.vy = 0;
+            player.isJumping = false;
+            player.onGround = true;
+            player.rotation = 0;
+            player.isCharging = false;
+            player.chargeTime = 0;
+            player.jumpQueued = false;
+            player.jumpsRemaining = 2;
+            player.coinCount = 0;
+            player.gunEnabled = false;
+            player.bulletCount = 0;
+            
+            frameCount = 0;
+            gameState.speedFrameCounter = 0;
+            nextSpawnTime = 20; 
+            
+            document.getElementById('gunUI').style.display = 'none';
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            document.getElementById('coinCount').textContent = player.coinCount;
+            mobileControls.style.display = 'block'; // Show controls when game starts
+
+            // FIX: Explicitly try to play the cycling sound on start (user interaction)
+            if (player.onGround) {
+                cyclingSound.play().catch(e => console.log('Cycling sound autoplay prevented.'));
+                gameState.cyclingSoundPlaying = true;
+            }
+        }
+
+        function gameLoop() {
+            if (gameState.playing) {
+                updatePlayer();
+                updateGame();
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- INPUT MANAGEMENT ---
+        
+        // This function is still used by the SPACE bar and initial mouse/touch input on the canvas area
+        function handleStartOrJump(isPress) {
+            if (!gameState.playing) {
+                if (isPress) {
+                    startGame();
+                }
+            } else {
+                if (isPress) {
+                    handleJumpInput();
+                } else {
+                    releaseJump();
+                }
+            }
+        }
+
+        // 1. Keyboard Handlers
+        document.addEventListener('keydown', e => {
+            if (!gameState.playing && e.code !== 'Space') return; // Only allow Space to start game via keyboard
+
+            keys[e.key] = true;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                // Keyboard jump logic (press) still uses the old function for charge start
+                handleStartOrJump(true); 
+            }
+        });
+
+        document.addEventListener('keyup', e => {
+            keys[e.key] = false;
+            if (e.code === 'Space') {
+                // Keyboard jump logic (release)
+                releaseJump();
+            }
+        });
+        
+        // 2. Mouse/Canvas Touch Handlers (Now primarily just for start/restart)
+        let touchStart = false;
+        
+        // FIX: Start/Game Over Screens handle click/touch for the entire screen area
+        function handleScreenClick() {
+            if (!gameState.playing) {
+                startGame();
+            }
+        }
+        startScreen.addEventListener('click', handleScreenClick);
+        gameOverScreen.addEventListener('click', handleScreenClick);
+        startScreen.addEventListener('touchstart', (e) => { e.preventDefault(); handleScreenClick(); }, { passive: false });
+        gameOverScreen.addEventListener('touchstart', (e) => { e.preventDefault(); handleScreenClick(); }, { passive: false });
+        
+        // Canvas now ignores touch/click *during* play to prevent accidental jump/shoot 
+        // outside of the dedicated control buttons.
+        canvas.addEventListener('click', (e) => {
+            if (!gameState.playing) startGame();
+        });
+        canvas.addEventListener('touchstart', (e) => { 
+            if (!gameState.playing) { e.preventDefault(); startGame(); }
+        }, { passive: false });
+        
+
+        // 3. Mobile Button Handlers
+        const jumpButton = document.getElementById('jumpButton');
+        const duckButton = document.getElementById('duckButton');
+        const shootButton = document.getElementById('shootButton');
+
+        // JUMP BUTTON LOGIC (Press/Hold)
+        function jumpPress(e) { 
+            e.preventDefault(); 
+            if (gameState.playing) mobileJumpActive = true; 
+        }
+        function jumpRelease(e) { 
+            e.preventDefault(); 
+            if (gameState.playing) mobileJumpActive = false; 
+        }
+        jumpButton.addEventListener('mousedown', jumpPress);
+        jumpButton.addEventListener('touchstart', jumpPress, { passive: false });
+        jumpButton.addEventListener('mouseup', jumpRelease);
+        jumpButton.addEventListener('touchend', jumpRelease, { passive: false });
+
+        // DUCK BUTTON LOGIC (Press/Hold)
+        function duckPress(e) { 
+            e.preventDefault(); 
+            if (gameState.playing) mobileDuckActive = true; 
+        }
+        function duckRelease(e) { 
+            e.preventDefault(); 
+            if (gameState.playing) mobileDuckActive = false; 
+        }
+        duckButton.addEventListener('mousedown', duckPress);
+        duckButton.addEventListener('touchstart', duckPress, { passive: false });
+        duckButton.addEventListener('mouseup', duckRelease);
+        duckButton.addEventListener('touchend', duckRelease, { passive: false });
+
+        // SHOOT BUTTON LOGIC (Tap/Click)
+        function shootHandler(e) { 
+            e.preventDefault(); 
+            if (gameState.playing) {
+                // Set a trigger flag that is consumed in updatePlayer
+                mobileShootTrigger = true; 
+            }
+        }
+        shootButton.addEventListener('click', shootHandler);
+        shootButton.addEventListener('touchstart', shootHandler, { passive: false });
+
+        // Start the main game loop
+        gameLoop();
+    </script>
+</body>
+</html>
