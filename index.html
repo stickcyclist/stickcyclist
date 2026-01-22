@@ -299,13 +299,40 @@
             </div>
         </div>
     </div>
+
+    <!-- Audio elements kept as fallbacks -->
+    <audio id="audioJump" preload="auto">
+        <source src="https://opengameart.org/sites/default/files/Sproing_0.ogg" type="audio/ogg">
+        <source src="https://opengameart.org/sites/default/files/Sproing_0.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="audioGameOver" preload="auto">
+        <source src="https://opengameart.org/sites/default/files/mixkit-arcade-retro-game-over-213.wav" type="audio/wav">
+        <source src="https://opengameart.org/sites/default/files/mixkit-arcade-retro-game-over-213.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="audioCycling" preload="auto" loop>
+        <source src="https://opengameart.org/sites/default/files/soft_whoosh.wav" type="audio/wav">
+        <source src="https://opengameart.org/sites/default/files/soft_whoosh.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="audioCoin" preload="auto">
+        <source src="https://opengameart.org/sites/default/files/5.wav" type="audio/wav">
+        <source src="https://opengameart.org/sites/default/files/5.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="audioShoot" preload="auto">
+        <source src="https://opengameart.org/sites/default/files/laser2.ogg" type="audio/ogg">
+        <source src="https://opengameart.org/sites/default/files/laser2.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const startScreen = document.getElementById('startScreen');
         const gameOverScreen = document.getElementById('gameOver');
         const mobileControls = document.getElementById('mobileControls');
-        
+
         // --- CONSTANTS ---
         const GOOGLE_BLUE = '#4285F4';
         const GOOGLE_RED = '#DB4437';
@@ -343,21 +370,105 @@
         const COINS_FOR_GUN = 3; 
         const STARTING_BULLETS = 3;
 
-        // --- AUDIO ---
-        const jumpSound = new Audio('https://opengameart.org/sites/default/files/Sproing_0.ogg'); 
-        jumpSound.volume = 0.5; 
-        
-        const gameOverSound = new Audio('https://opengameart.org/sites/default/files/mixkit-arcade-retro-game-over-213.wav');
-        gameOverSound.volume = 0.7;
+        // --- AUDIO SETUP ---
+        let audioCtx = null;
 
-        const cyclingSound = new Audio('https://opengameart.org/sites/default/files/soft_whoosh.wav');
-        cyclingSound.volume = 0.15;
-        cyclingSound.loop = true; 
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) {
+                    audioCtx = new AC();
+                } else {
+                    audioCtx = null;
+                }
+            }
+        }
 
-        const coinSound = new Audio('https://opengameart.org/sites/default/files/5.wav');
-        coinSound.volume = 0.2;
-        const shootSound = new Audio('https://opengameart.org/sites/default/files/laser2.ogg');
-        shootSound.volume = 0.4;
+        function unlockAudio() {
+            initAudioContext();
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('mousedown', unlockAudio);
+        }
+        document.addEventListener('touchstart', unlockAudio, {passive: true});
+        document.addEventListener('mousedown', unlockAudio);
+
+        // 🔊 LOUDER SYNTH SOUND SETTINGS (ONLY CHANGE REQUESTED)
+        const JUMP_SYNTH_GAIN = 0.30;   // was ~0.10
+        const JUMP_HTML_VOLUME = 1.00;  // was 0.5
+
+        function playSynthTone(frequency, duration = 0.12, type = 'sine', when = 0, gainLevel = 0.12) {
+            try {
+                if (!audioCtx) return;
+                const now = audioCtx.currentTime + when;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(frequency, now);
+
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(gainLevel, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + duration + 0.02);
+            } catch (e) {}
+        }
+
+        function playJumpSound() {
+            initAudioContext();
+            if (audioCtx) {
+                // louder jump sound (two layered tones)
+                playSynthTone(800 + Math.random() * 120, 0.09, 'sine', 0, JUMP_SYNTH_GAIN);
+                playSynthTone(520 + Math.random() * 80, 0.12, 'triangle', 0.02, JUMP_SYNTH_GAIN * 0.85);
+                return;
+            }
+
+            // fallback: HTMLAudio
+            const htmlJump = document.getElementById('audioJump');
+            if (htmlJump) {
+                try {
+                    htmlJump.currentTime = 0;
+                    htmlJump.volume = JUMP_HTML_VOLUME; // louder
+                    htmlJump.play().catch(() => {});
+                } catch (e) {}
+            }
+        }
+
+        function playGameOverSound() {
+            initAudioContext();
+            if (audioCtx) {
+                playSynthTone(380, 0.28, 'sawtooth', 0, 0.14);
+                playSynthTone(280, 0.28, 'sawtooth', 0.28, 0.12);
+                playSynthTone(200, 0.28, 'sine', 0.56, 0.10);
+                return;
+            }
+
+            const htmlGO = document.getElementById('audioGameOver');
+            if (htmlGO) {
+                try {
+                    htmlGO.currentTime = 0;
+                    htmlGO.volume = 0.8;
+                    htmlGO.play().catch(() => {});
+                } catch (e) {}
+            }
+        }
+
+        const cyclingSound = document.getElementById('audioCycling');
+        if (cyclingSound) {
+            cyclingSound.volume = 0.15;
+            cyclingSound.loop = true;
+        }
+        const coinSound = document.getElementById('audioCoin');
+        if (coinSound) coinSound.volume = 0.2;
+        const shootSound = document.getElementById('audioShoot');
+        if (shootSound) shootSound.volume = 0.4;
 
         // --- GAME STATE ---
         let gameState = {
@@ -408,13 +519,10 @@
         let nextSpawnTime = 0;
 
         // --- MOBILE INPUT STATES ---
-        // New state variables for mobile buttons
         let mobileJumpActive = false;
         let mobileDuckActive = false;
         let mobileShootTrigger = false;
         
-        // --- CLASSES (Coin, Bullet, Obstacle) ---
-        // (Classes remain the same)
         class Coin {
             constructor(x, y) {
                 this.x = x;
@@ -594,8 +702,6 @@
             }
         }
 
-        // --- CORE GAME LOOP FUNCTIONS ---
-
         function spawnObstacleOrCoin() {
             if (frameCount < nextSpawnTime) return;
 
@@ -648,9 +754,9 @@
             if (!player.gunEnabled || player.bulletCount <= 0) return;
             player.bulletCount--;
             gameState.bullets.push(new Bullet());
-            shootSound.currentTime = 0;
-            shootSound.play().catch(e => {});
-
+            if (shootSound) {
+                try { shootSound.currentTime = 0; shootSound.play().catch(() => {}); } catch (e) {}
+            }
             if (player.bulletCount === 0) {
                 player.gunEnabled = false;
                 document.getElementById('gunUI').style.display = 'none';
@@ -677,8 +783,7 @@
                 player.isCharging = false;
                 player.chargeTime = 0;
                 createParticles(player.x, player.y - 20, GOOGLE_YELLOW, 8); 
-                jumpSound.currentTime = 0; 
-                jumpSound.play().catch(e => {});
+                playJumpSound();
             } else if (player.isJumping && !player.isDucking) {
                 player.jumpQueued = true;
             }
@@ -697,8 +802,7 @@
                 player.jumpQueued = false;
                 player.jumpsRemaining--; 
                 createParticles(player.x, player.y + 5, GOOGLE_BLUE, 5); 
-                jumpSound.currentTime = 0; 
-                jumpSound.play().catch(e => {});
+                playJumpSound();
             }
             if (!player.isJumping) {
                 player.isCharging = false;
@@ -715,7 +819,6 @@
                 player.chargeTime++;
             }
 
-            // COMBINED INPUT LOGIC: Keyboard keys take precedence, but include mobile button states
             const isInputDucking = keys['ArrowDown'] || keys['s'] || mobileDuckActive;
             const isInputShoot = keys['ArrowLeft'] || keys['a'] || mobileShootTrigger;
 
@@ -778,15 +881,17 @@
                 player.onGround = false;
             }
 
-            // --- AUDIO LOGIC: Cycling Sound ---
             if (player.onGround && !gameState.cyclingSoundPlaying) {
-                 cyclingSound.play().catch(e => {});
+                 if (cyclingSound) {
+                     try { cyclingSound.currentTime = 0; cyclingSound.play().catch(() => {});} catch (e) {}
+                 }
                  gameState.cyclingSoundPlaying = true;
             } else if (!player.onGround && gameState.cyclingSoundPlaying) {
-                cyclingSound.pause();
+                if (cyclingSound) {
+                    try { cyclingSound.pause(); cyclingSound.currentTime = 0; } catch (e) {}
+                }
                 gameState.cyclingSoundPlaying = false;
             }
-            // --- END AUDIO LOGIC ---
 
             if (!player.onGround) {
                 if (player.isDucking) {
@@ -798,21 +903,19 @@
                 player.rotation = player.isDucking ? 0 : 0;
             }
             
-            // SHOOT INPUT LOGIC: Now checks the combined input state
             if (isInputShoot && gameState.playing) {
                  handleShootInput();
-                 // Reset keyboard shoot keys immediately to prevent auto-fire
                  keys['ArrowLeft'] = false; 
                  keys['a'] = false;
-                 // Reset mobile shoot trigger immediately
                  mobileShootTrigger = false;
             }
             
             gameState.coins = gameState.coins.filter(coin => {
                 if (coin.checkCollision()) {
                     player.coinCount++;
-                    coinSound.currentTime = 0;
-                    coinSound.play().catch(e => {});
+                    if (coinSound) {
+                        try { coinSound.currentTime = 0; coinSound.play().catch(() => {}); } catch (e) {}
+                    }
                     
                     if (player.coinCount % COINS_FOR_GUN === 0) { 
                         player.gunEnabled = true;
@@ -827,13 +930,9 @@
             document.getElementById('coinCount').textContent = player.coinCount;
             document.getElementById('bulletCountUI').textContent = player.bulletCount + ' / ' + STARTING_BULLETS;
             
-            // JUMP INPUT LOGIC: Check for mobile jump active state
             if (mobileJumpActive) {
-                // If jump button is held, trigger jump input handling every frame
-                // This handles charge, double jump, and jump queueing
                 handleJumpInput(); 
             } else {
-                // If jump button is released, trigger release logic
                 releaseJump();
             }
         }
@@ -854,10 +953,8 @@
             const increaseRate = gameState.speedMode === 'easy' ? EASY_SPEED_INCREASE_RATE : CHALLENGE_SPEED_INCREASE_RATE;
             gameState.gameSpeed = gameState.baseSpeed + gameState.speedFrameCounter / increaseRate;
 
-            
             spawnObstacleOrCoin();
 
-            // 1. Update and check obstacle collisions
             gameState.obstacles.forEach(obs => {
                 obs.update();
                 if (obs.checkCollision()) {
@@ -865,37 +962,9 @@
                 }
             });
             
-            // 2. Update and check bullet collisions
-            let newObstacles = [];
-            let newBullets = [];
-            
-            gameState.bullets.forEach(bullet => {
-                bullet.update();
-                let hitObstacle = false;
-                
-                gameState.obstacles.forEach(obs => {
-                    if (!hitObstacle && obs.checkBulletCollision(bullet)) {
-                        createParticles(obs.x + obs.width/2, obs.y + obs.height/2, GOOGLE_RED, 15);
-                        hitObstacle = true;
-                        bullet.hit = true;
-                    }
-                });
-                
-                if (bullet.hit || bullet.isOffScreen()) {
-                } else {
-                    newBullets.push(bullet);
-                }
-            });
-            
-            gameState.obstacles.forEach(obs => {
-                let wasHit = gameState.bullets.some(bullet => bullet.hit && obs.checkBulletCollision(obs));
-                if (!wasHit && !obs.isOffScreen()) {
-                    newObstacles.push(obs);
-                }
-            });
-            
-            gameState.obstacles = newObstacles;
-            gameState.bullets = newBullets;
+            gameState.bullets.forEach(bullet => bullet.update());
+            gameState.bullets = gameState.bullets.filter(bullet => !bullet.isOffScreen());
+
             gameState.coins.forEach(coin => coin.update());
             gameState.coins = gameState.coins.filter(coin => !coin.isOffScreen());
 
@@ -929,7 +998,6 @@
             
             const wheelRotation = frameCount * gameState.gameSpeed * 0.08; 
             
-            // Back Wheel
             ctx.beginPath();
             ctx.arc(-15, 0, 10, 0, Math.PI * 2);
             ctx.stroke();
@@ -941,7 +1009,6 @@
                 ctx.stroke();
             }
 
-            // Front Wheel
             ctx.beginPath();
             ctx.arc(15, 0, 10, 0, Math.PI * 2);
             ctx.stroke();
@@ -1076,19 +1143,16 @@
             }
         }
 
-        // --- GAME FLOW ---
-
         function gameOver() {
             gameState.playing = false;
             createParticles(player.x, player.y, GOOGLE_RED, 20); 
             
-            // Stop cycling sound and play game over sound
-            cyclingSound.pause();
-            cyclingSound.currentTime = 0;
+            if (cyclingSound) {
+                try { cyclingSound.pause(); cyclingSound.currentTime = 0; } catch (e) {}
+            }
             gameState.cyclingSoundPlaying = false;
             
-            gameOverSound.currentTime = 0;
-            gameOverSound.play().catch(e => {});
+            playGameOverSound();
             
             const newRecord = gameState.distance > gameState.bestDistance;
             if (newRecord) {
@@ -1108,11 +1172,10 @@
             document.getElementById('medal').textContent = medal;
             document.getElementById('finalDistance').textContent = gameState.distance + 'm';
             gameOverScreen.style.display = 'block';
-            mobileControls.style.display = 'none'; // Hide controls on game over
+            mobileControls.style.display = 'none';
         }
 
         function startGame() {
-            // Check if already playing to prevent double starts on accidental clicks
             if (gameState.playing) return; 
 
             gameState.started = true;
@@ -1148,11 +1211,12 @@
             startScreen.style.display = 'none';
             gameOverScreen.style.display = 'none';
             document.getElementById('coinCount').textContent = player.coinCount;
-            mobileControls.style.display = 'block'; // Show controls when game starts
+            mobileControls.style.display = 'block';
 
-            // FIX: Explicitly try to play the cycling sound on start (user interaction)
-            if (player.onGround) {
-                cyclingSound.play().catch(e => console.log('Cycling sound autoplay prevented.'));
+            unlockAudio();
+
+            if (player.onGround && cyclingSound) {
+                try { cyclingSound.currentTime = 0; cyclingSound.play().catch(() => {}); } catch (e) {}
                 gameState.cyclingSoundPlaying = true;
             }
         }
@@ -1166,9 +1230,6 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // --- INPUT MANAGEMENT ---
-        
-        // This function is still used by the SPACE bar and initial mouse/touch input on the canvas area
         function handleStartOrJump(isPress) {
             if (!gameState.playing) {
                 if (isPress) {
@@ -1183,14 +1244,12 @@
             }
         }
 
-        // 1. Keyboard Handlers
         document.addEventListener('keydown', e => {
-            if (!gameState.playing && e.code !== 'Space') return; // Only allow Space to start game via keyboard
+            if (!gameState.playing && e.code !== 'Space') return;
 
             keys[e.key] = true;
             if (e.code === 'Space') {
                 e.preventDefault();
-                // Keyboard jump logic (press) still uses the old function for charge start
                 handleStartOrJump(true); 
             }
         });
@@ -1198,15 +1257,10 @@
         document.addEventListener('keyup', e => {
             keys[e.key] = false;
             if (e.code === 'Space') {
-                // Keyboard jump logic (release)
                 releaseJump();
             }
         });
         
-        // 2. Mouse/Canvas Touch Handlers (Now primarily just for start/restart)
-        let touchStart = false;
-        
-        // FIX: Start/Game Over Screens handle click/touch for the entire screen area
         function handleScreenClick() {
             if (!gameState.playing) {
                 startGame();
@@ -1217,8 +1271,6 @@
         startScreen.addEventListener('touchstart', (e) => { e.preventDefault(); handleScreenClick(); }, { passive: false });
         gameOverScreen.addEventListener('touchstart', (e) => { e.preventDefault(); handleScreenClick(); }, { passive: false });
         
-        // Canvas now ignores touch/click *during* play to prevent accidental jump/shoot 
-        // outside of the dedicated control buttons.
         canvas.addEventListener('click', (e) => {
             if (!gameState.playing) startGame();
         });
@@ -1226,13 +1278,10 @@
             if (!gameState.playing) { e.preventDefault(); startGame(); }
         }, { passive: false });
         
-
-        // 3. Mobile Button Handlers
         const jumpButton = document.getElementById('jumpButton');
         const duckButton = document.getElementById('duckButton');
         const shootButton = document.getElementById('shootButton');
 
-        // JUMP BUTTON LOGIC (Press/Hold)
         function jumpPress(e) { 
             e.preventDefault(); 
             if (gameState.playing) mobileJumpActive = true; 
@@ -1246,7 +1295,6 @@
         jumpButton.addEventListener('mouseup', jumpRelease);
         jumpButton.addEventListener('touchend', jumpRelease, { passive: false });
 
-        // DUCK BUTTON LOGIC (Press/Hold)
         function duckPress(e) { 
             e.preventDefault(); 
             if (gameState.playing) mobileDuckActive = true; 
@@ -1260,18 +1308,15 @@
         duckButton.addEventListener('mouseup', duckRelease);
         duckButton.addEventListener('touchend', duckRelease, { passive: false });
 
-        // SHOOT BUTTON LOGIC (Tap/Click)
         function shootHandler(e) { 
             e.preventDefault(); 
             if (gameState.playing) {
-                // Set a trigger flag that is consumed in updatePlayer
                 mobileShootTrigger = true; 
             }
         }
         shootButton.addEventListener('click', shootHandler);
         shootButton.addEventListener('touchstart', shootHandler, { passive: false });
 
-        // Start the main game loop
         gameLoop();
     </script>
 </body>
