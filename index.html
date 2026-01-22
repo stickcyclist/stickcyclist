@@ -397,8 +397,8 @@
         document.addEventListener('mousedown', unlockAudio);
 
         // 🔊 LOUDER SYNTH SOUND SETTINGS (ONLY CHANGE REQUESTED)
-        const JUMP_SYNTH_GAIN = 0.30;   // was ~0.10
-        const JUMP_HTML_VOLUME = 1.00;  // was 0.5
+        const JUMP_SYNTH_GAIN = 0.30;
+        const JUMP_HTML_VOLUME = 1.00;
 
         function playSynthTone(frequency, duration = 0.12, type = 'sine', when = 0, gainLevel = 0.12) {
             try {
@@ -424,18 +424,16 @@
         function playJumpSound() {
             initAudioContext();
             if (audioCtx) {
-                // louder jump sound (two layered tones)
                 playSynthTone(800 + Math.random() * 120, 0.09, 'sine', 0, JUMP_SYNTH_GAIN);
                 playSynthTone(520 + Math.random() * 80, 0.12, 'triangle', 0.02, JUMP_SYNTH_GAIN * 0.85);
                 return;
             }
 
-            // fallback: HTMLAudio
             const htmlJump = document.getElementById('audioJump');
             if (htmlJump) {
                 try {
                     htmlJump.currentTime = 0;
-                    htmlJump.volume = JUMP_HTML_VOLUME; // louder
+                    htmlJump.volume = JUMP_HTML_VOLUME;
                     htmlJump.play().catch(() => {});
                 } catch (e) {}
             }
@@ -937,6 +935,9 @@
             }
         }
 
+        /* =====================================================
+           ✅ FIXED UPDATE GAME (BULLET COLLISION ADDED HERE)
+           ===================================================== */
         function updateGame() {
             if (!gameState.playing) return;
 
@@ -955,19 +956,50 @@
 
             spawnObstacleOrCoin();
 
-            gameState.obstacles.forEach(obs => {
-                obs.update();
-                if (obs.checkCollision()) {
-                    gameOver();
-                }
-            });
-            
+            // Update obstacles movement first
+            gameState.obstacles.forEach(obs => obs.update());
+
+            // Update bullets movement
             gameState.bullets.forEach(bullet => bullet.update());
+
+            // ✅ BULLET vs OBSTACLE COLLISION (FIX)
+            for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                const bullet = gameState.bullets[i];
+
+                for (let j = gameState.obstacles.length - 1; j >= 0; j--) {
+                    const obs = gameState.obstacles[j];
+
+                    if (obs.checkBulletCollision(bullet)) {
+                        // remove obstacle
+                        gameState.obstacles.splice(j, 1);
+
+                        // remove bullet
+                        gameState.bullets.splice(i, 1);
+
+                        // hit effect particles
+                        createParticles(obs.x + obs.width / 2, obs.y + obs.height / 2, GOOGLE_RED, 15);
+
+                        break; // bullet already hit something
+                    }
+                }
+            }
+
+            // Check player collision after removing shot obstacles
+            for (let k = 0; k < gameState.obstacles.length; k++) {
+                if (gameState.obstacles[k].checkCollision()) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Remove offscreen bullets
             gameState.bullets = gameState.bullets.filter(bullet => !bullet.isOffScreen());
 
+            // Update coins
             gameState.coins.forEach(coin => coin.update());
             gameState.coins = gameState.coins.filter(coin => !coin.isOffScreen());
 
+            // Update particles
             gameState.particles = gameState.particles.filter(p => {
                 p.x += p.vx - gameState.gameSpeed; 
                 p.y += p.vy;
@@ -975,6 +1007,9 @@
                 p.life -= 0.02;
                 return p.life > 0;
             });
+
+            // Remove offscreen obstacles
+            gameState.obstacles = gameState.obstacles.filter(obs => !obs.isOffScreen());
         }
 
         function drawPlayer() {
@@ -1188,6 +1223,7 @@
             gameState.obstacles = [];
             gameState.coins = [];
             gameState.bullets = [];
+            gameState.particles = [];
 
             player.y = gameState.groundY - 30;
             player.yOffset = 0;
