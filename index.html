@@ -9,7 +9,6 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            /* Prevent unwanted text selection/context menus on touch devices */
             -webkit-user-select: none;
             -moz-user-select: none;
             user-select: none;
@@ -32,13 +31,12 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            /* Maximize the container size */
             width: 100vw; 
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 10px; /* Small padding around the canvas */
+            padding: 10px;
         }
 
         #gameCanvas {
@@ -46,17 +44,11 @@
             background: linear-gradient(to bottom, #87CEEB 0%, #f5f5f5 70%);
             box-shadow: 0 15px 50px rgba(0,0,0,0.3);
             cursor: pointer;
-            
-            /* DINO GAME STYLE MAXIMIZATION: */
-            /* Use the min() function to ensure it takes the largest possible size */
-            /* while respecting the screen width, height, and the 2:1 ratio. */
             width: min(calc(98vh * 2), 98vw);
             height: min(calc(98vw / 2), 98vh);
-            
-            aspect-ratio: 2 / 1; /* Maintain the 2:1 aspect ratio */
+            aspect-ratio: 2 / 1;
         }
 
-        /* --- UI & Screen Styles (Unchanged for core UI) --- */
         #ui {
             position: absolute;
             top: 10px;
@@ -159,20 +151,19 @@
             display: none;
         }
 
-        /* --- MOBILE CONTROLS STYLES --- */
         #mobileControls {
-            position: fixed; /* Fixed position over the canvas */
+            position: fixed;
             bottom: 2vh;
             width: 100vw;
-            max-width: 1000px; /* Limits controls width to game width */
+            max-width: 1000px;
             z-index: 30;
             padding: 0 20px;
-            pointer-events: none; /* Allows clicks to pass through empty space */
-            display: none; /* Hidden by default, shown when game starts */
+            pointer-events: none;
+            display: none;
         }
         .control-group {
             position: absolute;
-            pointer-events: all; /* Re-enable pointer events for buttons */
+            pointer-events: all;
         }
         #leftControls {
             left: 20px;
@@ -199,26 +190,26 @@
             align-items: center;
             cursor: pointer;
             transition: background 0.1s;
-            touch-action: manipulation; /* Prevents double-tap zoom */
+            touch-action: manipulation;
         }
         .mobile-button:active {
             background: rgba(0, 0, 0, 0.8);
             border-color: #F4B400;
         }
         #jumpButton {
-            background: rgba(66, 133, 244, 0.7); /* Google Blue */
+            background: rgba(66, 133, 244, 0.7);
         }
         #jumpButton:active {
             background: rgba(66, 133, 244, 1.0);
         }
         #shootButton {
-            background: rgba(219, 68, 55, 0.7); /* Google Red */
+            background: rgba(219, 68, 55, 0.7);
         }
         #shootButton:active {
             background: rgba(219, 68, 55, 1.0);
         }
         #duckButton {
-            background: rgba(15, 157, 88, 0.7); /* Google Green */
+            background: rgba(15, 157, 88, 0.7);
         }
         #duckButton:active {
             background: rgba(15, 157, 88, 1.0);
@@ -285,22 +276,14 @@
 
     <div id="mobileControls">
         <div id="leftControls" class="control-group">
-            <div class="mobile-button" id="shootButton">
-                🔫
-            </div>
-            <div class="mobile-button" id="duckButton">
-                ⬇️
-            </div>
+            <div class="mobile-button" id="shootButton">🔫</div>
+            <div class="mobile-button" id="duckButton">⬇️</div>
         </div>
-        
         <div id="rightControls" class="control-group">
-            <div class="mobile-button" id="jumpButton">
-                ⬆️
-            </div>
+            <div class="mobile-button" id="jumpButton">⬆️</div>
         </div>
     </div>
 
-    <!-- Audio elements kept as fallbacks -->
     <audio id="audioJump" preload="auto">
         <source src="https://opengameart.org/sites/default/files/Sproing_0.ogg" type="audio/ogg">
         <source src="https://opengameart.org/sites/default/files/Sproing_0.mp3" type="audio/mpeg">
@@ -342,7 +325,7 @@
         const COIN_COLOR = GOOGLE_YELLOW;
         const BULLET_COLOR = '#444';
 
-        // Physics Tweaks for Smoother Feel
+        // Physics Tweaks
         const SMOOTH_GRAVITY = 0.65; 
         const MAX_CHARGE_TIME = 25; 
         const JUMP_POWER_NORMAL = -13;
@@ -376,27 +359,20 @@
         function initAudioContext() {
             if (!audioCtx) {
                 const AC = window.AudioContext || window.webkitAudioContext;
-                if (AC) {
-                    audioCtx = new AC();
-                } else {
-                    audioCtx = null;
-                }
+                if (AC) audioCtx = new AC();
             }
         }
 
         function unlockAudio() {
             initAudioContext();
             if (!audioCtx) return;
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume().catch(() => {});
-            }
+            if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
             document.removeEventListener('touchstart', unlockAudio);
             document.removeEventListener('mousedown', unlockAudio);
         }
         document.addEventListener('touchstart', unlockAudio, {passive: true});
         document.addEventListener('mousedown', unlockAudio);
 
-        // 🔊 LOUDER SYNTH SOUND SETTINGS (ONLY CHANGE REQUESTED)
         const JUMP_SYNTH_GAIN = 0.30;
         const JUMP_HTML_VOLUME = 1.00;
 
@@ -428,7 +404,6 @@
                 playSynthTone(520 + Math.random() * 80, 0.12, 'triangle', 0.02, JUMP_SYNTH_GAIN * 0.85);
                 return;
             }
-
             const htmlJump = document.getElementById('audioJump');
             if (htmlJump) {
                 try {
@@ -447,7 +422,6 @@
                 playSynthTone(200, 0.28, 'sine', 0.56, 0.10);
                 return;
             }
-
             const htmlGO = document.getElementById('audioGameOver');
             if (htmlGO) {
                 try {
@@ -459,10 +433,7 @@
         }
 
         const cyclingSound = document.getElementById('audioCycling');
-        if (cyclingSound) {
-            cyclingSound.volume = 0.15;
-            cyclingSound.loop = true;
-        }
+        if (cyclingSound) { cyclingSound.volume = 0.15; cyclingSound.loop = true; }
         const coinSound = document.getElementById('audioCoin');
         if (coinSound) coinSound.volume = 0.2;
         const shootSound = document.getElementById('audioShoot');
@@ -527,7 +498,6 @@
                 this.y = y;
                 this.width = 15;
                 this.height = 15;
-                this.collected = false;
             }
             update() { this.x -= gameState.gameSpeed; }
             draw() {
@@ -578,6 +548,12 @@
                 this.x = x;
                 this.type = type;
                 this.vX = 0;
+
+                // ✅ explosion state (Chrome-safe delayed removal)
+                this.exploding = false;
+                this.explodeFrame = 0;
+                this.remove = false;
+                this.explosionSeed = Math.random() * 9999;
                 
                 if (type === 'low') {
                     this.width = 22 + Math.random() * 10; 
@@ -621,6 +597,22 @@
             }
 
             update() {
+                // ✅ Explosion animation frames
+                if (this.exploding) {
+                    this.explodeFrame++;
+
+                    // spawn extra particles during first few frames
+                    if (this.explodeFrame <= 6) {
+                        createParticles(this.x + this.width/2, this.y + this.height/2, GOOGLE_RED, 6);
+                        createParticles(this.x + this.width/2, this.y + this.height/2, GOOGLE_YELLOW, 4);
+                    }
+
+                    if (this.explodeFrame > 14) {
+                        this.remove = true; // delayed removal for Chrome reliability
+                    }
+                    return;
+                }
+
                 if (this.type === 'rolling') {
                     this.x -= (gameState.gameSpeed + this.vX); 
                 } else {
@@ -635,6 +627,30 @@
             }
             
             draw() {
+                // ✅ draw explosion ring instead of instant vanish
+                if (this.exploding) {
+                    const cx = this.x + this.width / 2;
+                    const cy = this.y + this.height / 2;
+                    const t = Math.min(1, this.explodeFrame / 14);
+                    const radius = 10 + t * (this.width + 35);
+                    ctx.save();
+                    ctx.globalAlpha = 1 - t;
+                    ctx.strokeStyle = GOOGLE_RED;
+                    ctx.lineWidth = 5 - t * 3;
+                    ctx.beginPath();
+                    ctx.arc(Math.round(cx), Math.round(cy), radius, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.globalAlpha = (1 - t) * 0.7;
+                    ctx.strokeStyle = GOOGLE_YELLOW;
+                    ctx.lineWidth = 3 - t * 2;
+                    ctx.beginPath();
+                    ctx.arc(Math.round(cx), Math.round(cy), radius * 0.65, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                    return;
+                }
+
                 ctx.strokeStyle = '#111';
                 ctx.lineWidth = 2;
                 
@@ -665,9 +681,12 @@
                     ctx.strokeRect(drawX, drawY, this.width, this.height);
                 }
             }
+
             isOffScreen() { return this.x + this.width < 0; }
 
             checkCollision() {
+                if (this.exploding) return false; // ✅ ignore exploding obstacles
+
                 const effectivePlayerY = player.y + player.yOffset;
                 let playerTop, playerBottom;
 
@@ -691,6 +710,7 @@
             }
             
             checkBulletCollision(bullet) {
+                if (this.exploding) return false;
                 const obsLeft = this.x;
                 const obsRight = this.x + this.width;
                 const obsTop = this.y;
@@ -743,9 +763,7 @@
                 spawned = true;
             }
 
-            if (!spawned) {
-                nextSpawnTime = frameCount + 5; 
-            }
+            if (!spawned) nextSpawnTime = frameCount + 5;
         }
 
         function shoot() {
@@ -762,9 +780,7 @@
         }
 
         function handleShootInput() {
-            if (gameState.playing) {
-                shoot();
-            }
+            if (gameState.playing) shoot();
         }
         
         function handleJumpInput() {
@@ -813,9 +829,7 @@
 
             player.previousOnGround = player.onGround;
 
-            if (player.isCharging) {
-                player.chargeTime++;
-            }
+            if (player.isCharging) player.chargeTime++;
 
             const isInputDucking = keys['ArrowDown'] || keys['s'] || mobileDuckActive;
             const isInputShoot = keys['ArrowLeft'] || keys['a'] || mobileShootTrigger;
@@ -825,10 +839,7 @@
                 player.yOffset = 25;
             } else {
                 player.isDucking = isInputDucking && !player.onGround;
-                
-                if (!isInputDucking || player.onGround) {
-                    player.yOffset = 0; 
-                }
+                if (!isInputDucking || player.onGround) player.yOffset = 0; 
             }
 
             player.vy += gameState.gravity;
@@ -839,15 +850,15 @@
 
             if (player.vy >= 0) { 
                 gameState.obstacles.forEach(obs => {
+                    if (obs.exploding) return;
+
                     if ((obs.type === 'low' || obs.type === 'doubleJumpAnchor') &&
                         player.x + 15 > obs.x && player.x - 15 < obs.x + obs.width &&
                         player.y + 5 >= obs.y && player.y + 5 < obs.y + obs.height) 
                     {
                         if (player.y + 5 <= obs.y + obs.height) {
                             groundLevel = Math.min(groundLevel, obs.y - 30); 
-                            if (obs.type === 'doubleJumpAnchor') {
-                                landedOnAnchor = true;
-                            }
+                            if (obs.type === 'doubleJumpAnchor') landedOnAnchor = true;
                         }
                     }
                 });
@@ -860,9 +871,7 @@
                 player.isJumping = false;
                 player.onGround = true;
                 
-                if (player.y === gameState.groundY - 30 || landedOnAnchor) {
-                    player.jumpsRemaining = 2; 
-                } 
+                if (player.y === gameState.groundY - 30 || landedOnAnchor) player.jumpsRemaining = 2; 
                 
                 if (player.jumpQueued) {
                     player.vy = player.jumpPower; 
@@ -872,33 +881,24 @@
                     player.jumpsRemaining--; 
                 }
 
-                if (landingSpeed > 1) {
-                    createParticles(player.x, player.y + 5, GOOGLE_GREEN, Math.floor(landingSpeed)); 
-                }
+                if (landingSpeed > 1) createParticles(player.x, player.y + 5, GOOGLE_GREEN, Math.floor(landingSpeed)); 
             } else {
                 player.onGround = false;
             }
 
             if (player.onGround && !gameState.cyclingSoundPlaying) {
-                 if (cyclingSound) {
-                     try { cyclingSound.currentTime = 0; cyclingSound.play().catch(() => {});} catch (e) {}
-                 }
+                 if (cyclingSound) { try { cyclingSound.currentTime = 0; cyclingSound.play().catch(() => {});} catch (e) {} }
                  gameState.cyclingSoundPlaying = true;
             } else if (!player.onGround && gameState.cyclingSoundPlaying) {
-                if (cyclingSound) {
-                    try { cyclingSound.pause(); cyclingSound.currentTime = 0; } catch (e) {}
-                }
+                if (cyclingSound) { try { cyclingSound.pause(); cyclingSound.currentTime = 0; } catch (e) {} }
                 gameState.cyclingSoundPlaying = false;
             }
 
             if (!player.onGround) {
-                if (player.isDucking) {
-                    player.rotation = Math.PI / 3;
-                } else {
-                    player.rotation = Math.min(Math.PI / 6, player.vy * 0.03);
-                }
+                if (player.isDucking) player.rotation = Math.PI / 3;
+                else player.rotation = Math.min(Math.PI / 6, player.vy * 0.03);
             } else {
-                player.rotation = player.isDucking ? 0 : 0;
+                player.rotation = 0;
             }
             
             if (isInputShoot && gameState.playing) {
@@ -911,9 +911,7 @@
             gameState.coins = gameState.coins.filter(coin => {
                 if (coin.checkCollision()) {
                     player.coinCount++;
-                    if (coinSound) {
-                        try { coinSound.currentTime = 0; coinSound.play().catch(() => {}); } catch (e) {}
-                    }
+                    if (coinSound) { try { coinSound.currentTime = 0; coinSound.play().catch(() => {}); } catch (e) {} }
                     
                     if (player.coinCount % COINS_FOR_GUN === 0) { 
                         player.gunEnabled = true;
@@ -928,16 +926,11 @@
             document.getElementById('coinCount').textContent = player.coinCount;
             document.getElementById('bulletCountUI').textContent = player.bulletCount + ' / ' + STARTING_BULLETS;
             
-            if (mobileJumpActive) {
-                handleJumpInput(); 
-            } else {
-                releaseJump();
-            }
+            if (mobileJumpActive) handleJumpInput(); 
+            else releaseJump();
         }
 
-        /* =====================================================
-           ✅ FIXED UPDATE GAME (BULLET COLLISION ADDED HERE)
-           ===================================================== */
+        // ✅ Chrome-safe + Explosion-safe collision handling
         function updateGame() {
             if (!gameState.playing) return;
 
@@ -956,35 +949,53 @@
 
             spawnObstacleOrCoin();
 
-            // Update obstacles movement first
-            gameState.obstacles.forEach(obs => obs.update());
-
-            // Update bullets movement
-            gameState.bullets.forEach(bullet => bullet.update());
-
-            // ✅ BULLET vs OBSTACLE COLLISION (FIX)
+            // 1) update bullets first
             for (let i = gameState.bullets.length - 1; i >= 0; i--) {
-                const bullet = gameState.bullets[i];
-
-                for (let j = gameState.obstacles.length - 1; j >= 0; j--) {
-                    const obs = gameState.obstacles[j];
-
-                    if (obs.checkBulletCollision(bullet)) {
-                        // remove obstacle
-                        gameState.obstacles.splice(j, 1);
-
-                        // remove bullet
-                        gameState.bullets.splice(i, 1);
-
-                        // hit effect particles
-                        createParticles(obs.x + obs.width / 2, obs.y + obs.height / 2, GOOGLE_RED, 15);
-
-                        break; // bullet already hit something
-                    }
+                const b = gameState.bullets[i];
+                b.update();
+                if (b.isOffScreen()) {
+                    gameState.bullets.splice(i, 1);
                 }
             }
 
-            // Check player collision after removing shot obstacles
+            // 2) update obstacles (movement / explosion frames)
+            for (let j = gameState.obstacles.length - 1; j >= 0; j--) {
+                const o = gameState.obstacles[j];
+                o.update();
+                if (o.isOffScreen() || o.remove) {
+                    gameState.obstacles.splice(j, 1);
+                }
+            }
+
+            // 3) bullet vs obstacle collision (backward loops = Chrome safe)
+            for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                const bullet = gameState.bullets[i];
+                let bulletRemoved = false;
+
+                for (let j = gameState.obstacles.length - 1; j >= 0; j--) {
+                    const obs = gameState.obstacles[j];
+                    if (obs.exploding) continue;
+
+                    if (obs.checkBulletCollision(bullet)) {
+                        // mark explosion (delayed removal)
+                        obs.exploding = true;
+                        obs.explodeFrame = 0;
+
+                        // big first burst
+                        createParticles(obs.x + obs.width/2, obs.y + obs.height/2, GOOGLE_RED, 20);
+                        createParticles(obs.x + obs.width/2, obs.y + obs.height/2, GOOGLE_YELLOW, 10);
+
+                        // remove bullet immediately
+                        gameState.bullets.splice(i, 1);
+                        bulletRemoved = true;
+                        break;
+                    }
+                }
+
+                if (bulletRemoved) continue;
+            }
+
+            // 4) player collision check (ignore exploding obstacles)
             for (let k = 0; k < gameState.obstacles.length; k++) {
                 if (gameState.obstacles[k].checkCollision()) {
                     gameOver();
@@ -992,14 +1003,11 @@
                 }
             }
 
-            // Remove offscreen bullets
-            gameState.bullets = gameState.bullets.filter(bullet => !bullet.isOffScreen());
-
-            // Update coins
+            // coins
             gameState.coins.forEach(coin => coin.update());
             gameState.coins = gameState.coins.filter(coin => !coin.isOffScreen());
 
-            // Update particles
+            // particles
             gameState.particles = gameState.particles.filter(p => {
                 p.x += p.vx - gameState.gameSpeed; 
                 p.y += p.vy;
@@ -1007,9 +1015,6 @@
                 p.life -= 0.02;
                 return p.life > 0;
             });
-
-            // Remove offscreen obstacles
-            gameState.obstacles = gameState.obstacles.filter(obs => !obs.isOffScreen());
         }
 
         function drawPlayer() {
@@ -1157,9 +1162,7 @@
             });
             ctx.globalAlpha = 1;
 
-            if (gameState.playing || gameState.started) {
-                drawPlayer();
-            }
+            if (gameState.playing || gameState.started) drawPlayer();
             
             document.getElementById('distance').textContent = gameState.distance + 'm';
             document.getElementById('bestDistanceUI').textContent = gameState.bestDistance + 'm';
@@ -1182,9 +1185,7 @@
             gameState.playing = false;
             createParticles(player.x, player.y, GOOGLE_RED, 20); 
             
-            if (cyclingSound) {
-                try { cyclingSound.pause(); cyclingSound.currentTime = 0; } catch (e) {}
-            }
+            if (cyclingSound) { try { cyclingSound.pause(); cyclingSound.currentTime = 0; } catch (e) {} }
             gameState.cyclingSoundPlaying = false;
             
             playGameOverSound();
@@ -1268,21 +1269,15 @@
 
         function handleStartOrJump(isPress) {
             if (!gameState.playing) {
-                if (isPress) {
-                    startGame();
-                }
+                if (isPress) startGame();
             } else {
-                if (isPress) {
-                    handleJumpInput();
-                } else {
-                    releaseJump();
-                }
+                if (isPress) handleJumpInput();
+                else releaseJump();
             }
         }
 
         document.addEventListener('keydown', e => {
             if (!gameState.playing && e.code !== 'Space') return;
-
             keys[e.key] = true;
             if (e.code === 'Space') {
                 e.preventDefault();
@@ -1292,64 +1287,39 @@
 
         document.addEventListener('keyup', e => {
             keys[e.key] = false;
-            if (e.code === 'Space') {
-                releaseJump();
-            }
+            if (e.code === 'Space') releaseJump();
         });
         
         function handleScreenClick() {
-            if (!gameState.playing) {
-                startGame();
-            }
+            if (!gameState.playing) startGame();
         }
         startScreen.addEventListener('click', handleScreenClick);
         gameOverScreen.addEventListener('click', handleScreenClick);
         startScreen.addEventListener('touchstart', (e) => { e.preventDefault(); handleScreenClick(); }, { passive: false });
         gameOverScreen.addEventListener('touchstart', (e) => { e.preventDefault(); handleScreenClick(); }, { passive: false });
         
-        canvas.addEventListener('click', (e) => {
-            if (!gameState.playing) startGame();
-        });
-        canvas.addEventListener('touchstart', (e) => { 
-            if (!gameState.playing) { e.preventDefault(); startGame(); }
-        }, { passive: false });
+        canvas.addEventListener('click', () => { if (!gameState.playing) startGame(); });
+        canvas.addEventListener('touchstart', (e) => { if (!gameState.playing) { e.preventDefault(); startGame(); } }, { passive: false });
         
         const jumpButton = document.getElementById('jumpButton');
         const duckButton = document.getElementById('duckButton');
         const shootButton = document.getElementById('shootButton');
 
-        function jumpPress(e) { 
-            e.preventDefault(); 
-            if (gameState.playing) mobileJumpActive = true; 
-        }
-        function jumpRelease(e) { 
-            e.preventDefault(); 
-            if (gameState.playing) mobileJumpActive = false; 
-        }
+        function jumpPress(e) { e.preventDefault(); if (gameState.playing) mobileJumpActive = true; }
+        function jumpRelease(e) { e.preventDefault(); if (gameState.playing) mobileJumpActive = false; }
         jumpButton.addEventListener('mousedown', jumpPress);
         jumpButton.addEventListener('touchstart', jumpPress, { passive: false });
         jumpButton.addEventListener('mouseup', jumpRelease);
         jumpButton.addEventListener('touchend', jumpRelease, { passive: false });
 
-        function duckPress(e) { 
-            e.preventDefault(); 
-            if (gameState.playing) mobileDuckActive = true; 
-        }
-        function duckRelease(e) { 
-            e.preventDefault(); 
-            if (gameState.playing) mobileDuckActive = false; 
-        }
+        function duckPress(e) { e.preventDefault(); if (gameState.playing) mobileDuckActive = true; }
+        function duckRelease(e) { e.preventDefault(); if (gameState.playing) mobileDuckActive = false; }
         duckButton.addEventListener('mousedown', duckPress);
         duckButton.addEventListener('touchstart', duckPress, { passive: false });
         duckButton.addEventListener('mouseup', duckRelease);
         duckButton.addEventListener('touchend', duckRelease, { passive: false });
 
-        function shootHandler(e) { 
-            e.preventDefault(); 
-            if (gameState.playing) {
-                mobileShootTrigger = true; 
-            }
-        }
+        function shootHandler(e) { e.preventDefault(); if (gameState.playing) mobileShootTrigger = true; }
         shootButton.addEventListener('click', shootHandler);
         shootButton.addEventListener('touchstart', shootHandler, { passive: false });
 
